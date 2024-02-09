@@ -10,14 +10,13 @@ import sys
 from argparse import ArgumentParser
 from babyai_text_bot import BotAgent
 from collections import deque
+from lm_wrappers import BABYAI_ACTION_SPACE
 from tqdm import tqdm
 
 base_path = str(pathlib.Path().resolve())
 PROJECT_PATH = os.path.join(base_path[: base_path.find("diff_history")], "diff_history")
 sys.path.insert(0, PROJECT_PATH)
 from utils import set_seed_everywhere
-
-ACTION_SPACE = ["turn_left", "turn_right", "go_forward", "pick_up", "drop", "toggle"]
 
 
 def main(args):
@@ -32,16 +31,13 @@ def main(args):
 
     set_seed_everywhere(args.seed)
 
-    # config actions
-    list_actions = [a.replace("_", " ") for a in ACTION_SPACE]
-
     # config envs
     env = gym.make(args.env_name, num_dists=0)
     seed = int(args.seed)
     env.seed(seed)
 
     # init bot
-    algo = BotAgent(env=env, subgoals=list_actions)
+    algo = BotAgent(env=env, subgoals=BABYAI_ACTION_SPACE)
 
     # gen data
     episodes = []
