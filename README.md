@@ -22,7 +22,7 @@ sed -i '365,366d' external/nle/nle/env/tasks.py
 cd external/nle; python setup.py build; python setup.py install; cd ../..
 ```
 
-### netHack language wrapper
+### NetHack language wrapper
 ```
 cd external/nle-language-wrapper; python setup.py build; python setup.py install; python -m setup develop; cd ../..
 ```
