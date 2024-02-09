@@ -1,4 +1,4 @@
-name: diff_history
+name: test
 channels:
   - defaults
 dependencies:
