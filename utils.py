@@ -19,10 +19,8 @@ from transformers import GenerationConfig
 from transformers import StoppingCriteria
 
 base_path = str(pathlib.Path().resolve())
-PROJECT_PATH = os.path.join(
-    base_path[: base_path.find("diff_history_test")], "diff_history_test"
-)
-sys.path.insert(0, os.path.join(PROJECT_PATH, "nle-language-wrapper"))
+PROJECT_PATH = os.path.join(base_path[: base_path.find("diff_history")], "diff_history")
+sys.path.insert(0, os.path.join(PROJECT_PATH, "external/nle-language-wrapper"))
 from nle_language_wrapper import NLELanguageWrapper
 from nle_language_wrapper.nle_language_obsv import NLELanguageObsv
 
