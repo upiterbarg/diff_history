@@ -1,0 +1,12 @@
+[submodule "external/Grounding_LLMs_with_online_RL"]
+	path = external/Grounding_LLMs_with_online_RL
+	url = https://github.com/flowersteam/Grounding_LLMs_with_online_RL.git
+[submodule "external/nle"]
+	path = external/nle
+	url = https://github.com/facebookresearch/nle.git
+[submodule "external/dungeonsdata-neurips2022"]
+	path = external/dungeonsdata-neurips2022
+	url = https://github.com/dungeonsdatasubmission/dungeonsdata-neurips2022.git
+[submodule "external/nle-language-wrapper"]
+	path = external/nle-language-wrapper
+	url = https://github.com/ngoodger/nle-language-wrapper
