@@ -71,7 +71,7 @@ pip install -e . && cd ../../..
 ----- / launch.sh                    # Sample instruction tuning launch script
 ```
 ```
---> ds_configs                # Distributed training configs
+--> ds_configs             # Distributed training configs
 ----- / stage3_offloading_accelerate.conf    #  ZeRO Stage 3
 ```
 ```
