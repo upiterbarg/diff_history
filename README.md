@@ -71,6 +71,10 @@ pip install -e . && cd ../../..
 ----- / launch.sh                    # Sample instruction tuning launch script
 ```
 ```
+--> ds_configs                # Distributed training configs
+----- / stage3_offloading_accelerate.conf    #  ZeRO Stage 3
+```
+```
 --> nethack_experiments    # NetHack experiment code
 ----- / diff_history_rollout.py       # Test LMs with diff history in NetHack.
 ----- / fulltext_history_rollout.py   # Test LMs with full text history in NetHack.
