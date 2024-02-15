@@ -8,8 +8,8 @@ This is the official code release accompanying the paper **[*`diff` History for 
 
 [:paperclips: **Project Page** :paperclips:](https://diffhistory.github.io) | 
 [:bulb:  **Abstract** :bulb:](https://arxiv.org/abs/2312.07540 ) | 
-[ :memo: **Paper PDF** :pencil:](https://arxiv.org/pdf/2312.07540.pdf ) | 
-:inbox_tray: **Dataset Coming Soon!**:inbox_tray: | 
+[:memo: **Paper PDF** :pencil:](https://arxiv.org/pdf/2312.07540.pdf ) | 
+[:inbox_tray: **Dataset Coming Soon!** :inbox_tray:]()
 
 
 ---
