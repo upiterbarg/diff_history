@@ -60,7 +60,7 @@ pip install -e . && cd ../../..
 ## Navigating the Repo :world_map:
 
 ```
---> env_config.py          # Conda config.
+--> conda_env.yaml         # Conda config.
 --> finetune.py            # Finetuning script. Copies https://github.com/allenai/open-instruct/open_instruct/finetune.py, with token additions + masking.
 --> action_textmap.py      # Interaction history tokens.
 --> gpt2_resize.py         # Resize GPT-2 context length
