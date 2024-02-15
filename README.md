@@ -14,7 +14,7 @@ This is the official code release accompanying the paper **[*`diff` History for 
 
 ---
 
-## Installation
+## Installation :electric_plug:
 
 Start by cloning our repo recursively.
 ```
@@ -57,7 +57,7 @@ pip install -e . && cd ../../..
 
 ---
 
-## Navigating the Repo
+## Navigating the Repo :world_map:
 
 ```
 --> env_config.py          # Conda config.
