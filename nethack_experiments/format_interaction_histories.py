@@ -10,7 +10,8 @@ import os
 import pdb
 import threading
 import time
-
+import multiprocessing
+from multiprocessing.pool import ThreadPool
 from argparse import ArgumentParser
 from multiprocessing import Process
 from multiprocessing import Queue
@@ -32,7 +33,7 @@ from action_textmap import (
     special_tokens_interaction_history,
 )
 from instruction_encode_templates import *
-from utils import set_seed_everywhere
+from utils import set_seed_everywhere, get_diff
 
 
 def form_prompt(data, obs_preqs):
@@ -48,29 +49,6 @@ def form_prompt(data, obs_preqs):
             )
         ]
     )
-
-
-def get_diff(prompt_uno, prompt_dos, n=0):
-    proc_prompt_uno = prompt_uno.strip().splitlines()
-    proc_prompt_dos = prompt_dos.strip().splitlines()
-
-    out = "\n".join(
-        [
-            line
-            for i, line in enumerate(
-                difflib.unified_diff(
-                    proc_prompt_uno,
-                    proc_prompt_dos,
-                    n=n,
-                    fromfile="file1",
-                    tofile="file2",
-                    lineterm="",
-                )
-            )
-            if i > 1
-        ]
-    )
-    return out
 
 
 def get_samples(source_dir, seq, nsamples):
@@ -102,10 +80,12 @@ def get_samples(source_dir, seq, nsamples):
 
 
 def load_and_process_chunks(
+    idx,
     samples,
+    diff_fn,
+    fulltext_fn,
     source_dir,
-    seq,
-    dump_dir,
+    seq=64,
     observation_tok=special_tokens_interaction_history["observation"],
     obs_preqs=nle_obs_preqs,
     action_map=nle_action_textmap,
@@ -179,29 +159,7 @@ def load_and_process_chunks(
             eos_token=None,
         )
 
-    diff_histories = []
-    raw_histories = []
-
-    os.makedirs(dump_dir, exist_ok=True)
-
-    prefix = source_dir[source_dir.rfind("/") + 1 :].replace("-", "").replace("_", "")
-
-    diff_fn = prefix + f"-n{len(samples)}-k{seq}-diff.jsonl"
-    metadata_fn = prefix + f"-n{len(samples)}-k{seq}-metadata.jsonl"
-    fulltext_fn = prefix + f"-n{len(samples)}-k{seq}-fulltext.jsonl"
-
-    diff_fn = os.path.join(dump_dir, diff_fn)
-    fulltext_fn = os.path.join(dump_dir, fulltext_fn)
-    metadata_fn = os.path.join(dump_dir, fulltext_fn)
-
-    print(f"dumping diff data to {diff_fn}")
-    print(f"dumping full text data to {fulltext_fn}")
-    print(f"dumping sample metadata to {metadata_fn}")
-
-    with jsonlines.open(metadata_fn, "w") as writer:
-        writer.write_all(samples)
-
-    with tqdm(total=len(samples), position=1) as pbar:
+    with tqdm(total=len(samples), position=idx, desc=str(os.getpid())) as pbar:
         for eps_fn, start_ts_id in samples:
             ## only load relevant part of data
             chunk = []
@@ -225,20 +183,82 @@ def load_and_process_chunks(
 
             pbar.update(1)
 
-    return chunked_data
+    return 1
 
 
-def main():
-    data_dir = os.path.join(PROJECT_PATH, "nethack_experiments", "data")
-    source_dir = os.path.join(data_dir, "all-10-vision")
-    dump_dir = os.path.join(data_dir, "processed")
+def main(args):
+    ## get samples
+    samples = get_samples(args.source_dir, args.seq, args.nsamples)
 
-    seq = 64
-    nsamples = 10000
+    ## configure dump dirs
+    os.makedirs(args.dump_dir, exist_ok=True)
 
-    samples = get_samples(source_dir, seq, nsamples)
-    chunks = load_and_process_chunks(samples, source_dir, seq, dump_dir)
+    prefix = args.source_dir[args.source_dir.rfind("/") + 1 :].replace("-", "").replace("_", "")
+
+    diff_fn = prefix + f"-n{len(samples)}-k{args.seq}-diff.jsonl"
+    metadata_fn = prefix + f"-n{len(samples)}-k{args.seq}-metadata.jsonl"
+    fulltext_fn = prefix + f"-n{len(samples)}-k{args.seq}-fulltext.jsonl"
+
+    diff_fn = os.path.join(args.dump_dir, diff_fn)
+    fulltext_fn = os.path.join(args.dump_dir, fulltext_fn)
+    metadata_fn = os.path.join(args.dump_dir, fulltext_fn)
+
+    ## dump sample metadata
+    with jsonlines.open(metadata_fn, "w") as writer:
+        writer.write_all(samples)
+
+    ## launch pool
+    pool = multiprocessing.Pool(args.num_workers)
+
+    gen_helper_fn = functools.partial(
+        load_and_process_chunks,
+        diff_fn=diff_fn,
+        fulltext_fn=fulltext_fn,
+        source_dir=args.source_dir,
+        seq=args.seq,
+    )
+
+    num_samples_per_worker = len(samples) // args.num_workers + 1
+
+    gen_args = []
+    start_i = 0
+    for j, proc in enumerate(range(args.num_workers - 1)):
+        gen_args += [[j, samples[start_i : start_i + num_samples_per_worker]]]
+        start_i += num_samples_per_worker
+    if len(samples) - start_i > 0:
+        gen_args += [[args.num_workers - 1, samples[start_i:]]]
+
+    pool = multiprocessing.Pool(args.num_workers)
+    runs = [
+        pool.apply_async(gen_helper_fn, args=gen_args[k])
+        for k in range(args.num_workers)
+        if len(gen_args) > k
+    ]
+    results = [p.get() for p in runs]
+
+
+def parse_args():
+    parser = ArgumentParser()
+    parser.add_argument(
+        "--source_dir",
+        default=default=os.path.join(PROJECT_PATH, "nethack_experiments", "data", "all-15000")
+        type=str,
+    )
+    parser.add_argument("--nsamples", default=1000, type=int)
+    parser.add_argument("--num_workers", default=16, type=int)
+    parser.add_argument("--seq", default=128, type=int)
+
+    args = parser.parse_args()
+
+    # assign at most one worker process per core,
+    # leave at least one core free
+    args.num_workers = min(multiprocessing.cpu_count() - 1, args.num_workers)
+
+    print("ARGS:", args)
+
+    return args
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)
