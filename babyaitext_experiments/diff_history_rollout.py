@@ -14,7 +14,7 @@ import torch
 import tqdm
 import pathlib
 import sys
-
+from transformers import GenerationConfig
 from lm_wrappers import BabyAITextLMWrapper, BABYAI_ACTION_SPACE
 
 from accelerate import Accelerator
@@ -139,8 +139,6 @@ def history_rollout(
     actions_since_reset = []
     steps_since_menu_open = 0
 
-    imagined_diffs = []
-    gt_diffs = []
     all_actions = []
     diff_idx = 0
     reward = 0
@@ -186,17 +184,12 @@ def history_rollout(
 
         ctx += "\n%s" % (interleaving_token)
 
-        actions, diffs, decoded_output = _query_model(ctx, unroll_length=1)
-        # pdb.set_trace()
-
-        imagined_diffs += [diffs]
+        actions, _, decoded_output = _query_model(ctx, unroll_length=1)
 
         for action in actions:
             try:
                 obs, reward, done, infos = env.step(action)
-                true_diff = get_diff(prompt_history[diff_idx], obs["prompt"], n=0)
 
-                gt_diffs += [true_diff]
                 all_actions += [action]
                 prompt_history += [obs["prompt"]]
 
@@ -240,7 +233,7 @@ def main():
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--history", default=4)
     parser.add_argument(
-        "--history_max", action="store_true", info="max-context history back-tracking"
+        "--history_max", action="store_true", help="max-context history back-tracking"
     )
     parser.add_argument("--env_name", default="BabyAI-MixedTrainLocal-v0", type=str)
     parser.add_argument(

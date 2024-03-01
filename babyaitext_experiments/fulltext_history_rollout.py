@@ -36,9 +36,12 @@ from babyai.rl.utils import DictList
 
 sys.path.insert(0, PROJECT_PATH)
 from action_textmap import special_tokens_interaction_history
-from utils import load_hf_lm_and_tokenizer
-from utils import pretty_print_ttyrec
-from utils import set_seed_everywhere
+from utils import (
+    load_hf_lm_and_tokenizer,
+    pretty_print_ttyrec,
+    set_seed_everywhere,
+    UnrollLengthCriteria,
+)
 
 ACTION_TOKEN = special_tokens_interaction_history["action"]
 OBSERVATION_TOKEN = special_tokens_interaction_history["observation"]
@@ -50,7 +53,7 @@ def history_rollout(
     tokenizer,
     action_generation_config,
     args,
-    scratchpad_token=OBSERVATION_TOKEN,
+    observation_token=OBSERVATION_TOKEN,
     max_tries=1,
     history=4,
     max_ctx_tokens=4000,
@@ -62,17 +65,17 @@ def history_rollout(
     env = gym.make(env_name, num_dists=0)
     seed = int(seed)
 
-    env = BabyAILlamaWrapper(env)
+    env = BabyAITextLMWrapper(env)
     env.env.seed(seed)
 
     interleaving_token = env.interleaving_token
     interleaving_token_id = tokenizer.encode_plus(env.interleaving_token)["input_ids"][
         -1
     ]
-    scratchpad_token_id = tokenizer.encode_plus(scratchpad_token)["input_ids"][-1]
+    observation_token_id = tokenizer.encode_plus(observation_token)["input_ids"][-1]
 
     def _query_model(
-        prompt, unroll_length=1, stop_token_id=scratchpad_token_id, max_tokens=1024
+        prompt, unroll_length=1, stop_token_id=observation_token_id, max_tokens=1024
     ):
         stopping_criteria = UnrollLengthCriteria(
             unroll_length=unroll_length,
@@ -137,8 +140,6 @@ def history_rollout(
     actions_since_reset = []
     steps_since_menu_open = 0
 
-    imagined_diffs = []
-    gt_diffs = []
     all_actions = []
     diff_idx = 0
     reward = 0
@@ -154,7 +155,7 @@ def history_rollout(
                 for i in range(-candidate_history, 0):
                     ctx += "\n%s%s" % (interleaving_token, all_actions[i])
                     ctx += "\n%s\n%s" % (
-                        scratchpad_token,
+                        observation_token,
                         prompt_history[i],
                     )
                 tokenized_prompt = tokenizer(
@@ -176,22 +177,17 @@ def history_rollout(
             for i in range(-candidate_history, 0):
                 ctx += "\n%s%s" % (interleaving_token, all_actions[i])
                 ctx += "\n%s\n%s" % (
-                    scratchpad_token,
+                    observation_token,
                     prompt_history[i],
                 )
 
         ctx += "\n%s" % (interleaving_token)
 
-        actions, diffs, decoded_output = _query_model(ctx, unroll_length=1)
-
-        imagined_diffs += [diffs]
+        actions, _, decoded_output = _query_model(ctx, unroll_length=1)
 
         for action in actions:
             try:
                 obs, reward, done, infos = env.step(action)
-                true_diff = get_diff(prompt_history[diff_idx], obs["prompt"], n=0)
-
-                gt_diffs += [true_diff]
                 all_actions += [action]
                 prompt_history += [obs["prompt"]]
 
@@ -233,7 +229,7 @@ def main():
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--history", default=4)
     parser.add_argument(
-        "--history_max", action="store_true", info="max-context history back-tracking"
+        "--history_max", action="store_true", help="max-context history back-tracking"
     )
     parser.add_argument("--env_name", default="BabyAI-MixedTrainLocal-v0", type=str)
     parser.add_argument(
