@@ -93,6 +93,7 @@ def history_rollout(
             )
             decoded = tokenizer.batch_decode(out)
 
+            suffix = decoded[0][prompt.rfind(ACTION_TOKEN) :]
             if suffix.count(ACTION_TOKEN) > 0:
                 break
 
