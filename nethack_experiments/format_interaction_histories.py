@@ -68,7 +68,9 @@ def get_samples(source_dir, seq, nsamples):
     for i in range(ep_lens.shape[0]):
         partial_sums += [partial_sums[-1] + ep_lens[i] - seq - 1]
     partial_sums = np.array(partial_sums)
-    lsamples = np.random.randint(low=0, high=partial_sums[-1], size=nsamples)
+    lsamples = np.random.choice(
+        np.arange(0, partial_sums[-1], 1), size=nsamples, replace=False
+    )
     eps_ids = np.array([i for i in range(ep_lens.shape[0] + 1)])
     samples = []
     for lsample in lsamples:
@@ -232,9 +234,13 @@ def main(args):
         .replace("_", "")
     )
 
-    diff_fn = prefix + f"-n{len(samples)}-k{args.seq}-diff.jsonl"
-    metadata_fn = prefix + f"-n{len(samples)}-k{args.seq}-metadata.jsonl"
-    fulltext_fn = prefix + f"-n{len(samples)}-k{args.seq}-fulltext.jsonl"
+    diff_fn = prefix + f"-n{len(samples)}-k{args.seq}-diff-seed{args.seed}.jsonl"
+    metadata_fn = (
+        prefix + f"-n{len(samples)}-k{args.seq}-metadata-seed{args.seed}.jsonl"
+    )
+    fulltext_fn = (
+        prefix + f"-n{len(samples)}-k{args.seq}-fulltext-seed{args.seed}.jsonl"
+    )
 
     diff_fn = os.path.join(args.dump_dir, diff_fn)
     fulltext_fn = os.path.join(args.dump_dir, fulltext_fn)
@@ -303,8 +309,11 @@ def parse_args():
     parser.add_argument("--nsamples", default=500000, type=int)
     parser.add_argument("--num_workers", default=16, type=int)
     parser.add_argument("--seq", default=128, type=int)
+    parser.add_argument("--seed", default=0, type=int)
 
     args = parser.parse_args()
+
+    set_seed_everywhere(args.seed)
 
     print("ARGS:", args)
 
