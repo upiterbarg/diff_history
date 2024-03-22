@@ -193,7 +193,11 @@ def main(args):
     ## configure dump dirs
     os.makedirs(args.dump_dir, exist_ok=True)
 
-    prefix = args.source_dir[args.source_dir.rfind("/") + 1 :].replace("-", "").replace("_", "")
+    prefix = (
+        args.source_dir[args.source_dir.rfind("/") + 1 :]
+        .replace("-", "")
+        .replace("_", "")
+    )
 
     diff_fn = prefix + f"-n{len(samples)}-k{args.seq}-diff.jsonl"
     metadata_fn = prefix + f"-n{len(samples)}-k{args.seq}-metadata.jsonl"
@@ -241,13 +245,13 @@ def parse_args():
     parser = ArgumentParser()
     parser.add_argument(
         "--source_dir",
-        default=os.path.join(PROJECT_PATH, "nethack_experiments", "data", "all-15000"),
+        default=os.path.join(PROJECT_PATH, "nethack_experiments", "data", "all-10000"),
         type=str,
     )
     parser.add_argument(
         "--dump_dir",
         type=str,
-        default=os.path.join(PROJECT_PATH, "nethack_experiments", "data", "processed").
+        default=os.path.join(PROJECT_PATH, "nethack_experiments", "data", "processed"),
     )
     parser.add_argument("--nsamples", default=500000, type=int)
     parser.add_argument("--num_workers", default=16, type=int)
