@@ -240,6 +240,17 @@ def main(args):
     fulltext_fn = os.path.join(args.dump_dir, fulltext_fn)
     metadata_fn = os.path.join(args.dump_dir, metadata_fn)
 
+    # check whether files exist --> raise errors
+    assert not os.path.exists(
+        fulltext_fn
+    ), f"A file already exists as {fulltext_fn}! Please remove this file and relaunch this script."
+    assert not os.path.exists(
+        diff_fn
+    ), f"A file already exists as {diff_fn}! Please remove this file and relaunch this script."
+    assert not os.path.exists(
+        metadata_fn
+    ), f"A file already exists as {metadata_fn}! Please remove this file and relaunch this script."
+
     ## dump sample metadata
     with jsonlines.open(metadata_fn, "w") as writer:
         writer.write_all(samples)
