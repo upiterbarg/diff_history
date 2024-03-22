@@ -79,8 +79,9 @@ def get_samples(source_dir, seq, nsamples):
     return samples
 
 
-def load_and_process_chunks(
+def faster_load_and_process_chunks(
     idx,
+    files,
     samples,
     diff_fn,
     fulltext_fn,
@@ -159,29 +160,57 @@ def load_and_process_chunks(
             eos_token=None,
         )
 
-    with tqdm(total=len(samples), position=idx, desc=str(os.getpid())) as pbar:
-        for eps_fn, start_ts_id in samples:
+    relevant_samples_by_file = {file: [] for file in files}
+
+    total_samples = 0
+    for sample in samples:
+        eps_fn, start_ts_id = sample
+        if not eps_fn in files:
+            continue
+        relevant_samples_by_file[eps_fn] += [start_ts_id]
+        total_samples += 1
+
+    with tqdm(total=total_samples, position=idx, desc=str(os.getpid())) as pbar:
+        for eps_fn in relevant_samples_by_file:
             ## only load relevant part of data
-            chunk = []
+            chunks = {
+                start_ts_id: [] for start_ts_id in relevant_samples_by_file[eps_fn]
+            }
+
+            relevant_ts_ids = []
+            chunk_lookup = {}
+            for start_ts_id in relevant_samples_by_file[eps_fn]:
+                ts_ids = list(range(start_ts_id, start_ts_id + seq + 1))
+                for ts_id in ts_ids:
+                    if ts_id in chunk_lookup:
+                        chunk_lookup[ts_id] += [start_ts_id]
+                    else:
+                        chunk_lookup[ts_id] = [start_ts_id]
+                relevant_ts_ids += ts_ids
+
             with jsonlines.open(os.path.join(source_dir, eps_fn), "r") as reader:
                 for i, datum in enumerate(reader):
                     #### first item in file is metadata string --> skip
-                    if (i - 1) < start_ts_id:
-                        continue
-                    elif (i - 1) >= start_ts_id + seq:
+                    if (i - 1) in relevant_ts_ids:
+                        for chunk_id in chunk_lookup[(i - 1)]:
+                            chunks[chunk_id] += [datum]
+                            if len(chunks[chunk_id]) == (seq + 1):
+                                pbar.update(1)
+                    if (i - 1) > max(relevant_ts_ids):
                         break
-                    chunk += [datum]
 
-            diff_history = _process_helper_diff_observation(chunk)
-            raw_history = _process_helper_raw_observation(chunk)
+            diff_histories = []
+            raw_histories = []
+            for start_ts_id in relevant_samples_by_file[eps_fn]:
+                chunk = chunks[start_ts_id]
+                diff_histories += [_process_helper_diff_observation(chunk)]
+                raw_histories += [_process_helper_raw_observation(chunk)]
 
             with jsonlines.open(diff_fn, "a") as writer:
-                writer.write_all([diff_history])
+                writer.write_all(diff_histories)
 
             with jsonlines.open(fulltext_fn, "a") as writer:
-                writer.write_all([raw_history])
-
-            pbar.update(1)
+                writer.write_all(raw_histories)
 
     return 1
 
@@ -189,6 +218,10 @@ def load_and_process_chunks(
 def main(args):
     ## get samples
     samples = get_samples(args.source_dir, args.seq, args.nsamples)
+    samples.sort(key=lambda x: x[1])
+    samples.sort(key=lambda x: x[0])
+
+    sampled_files = list(set([x[0] for x in samples]))
 
     ## configure dump dirs
     os.makedirs(args.dump_dir, exist_ok=True)
@@ -204,33 +237,36 @@ def main(args):
     fulltext_fn = prefix + f"-n{len(samples)}-k{args.seq}-fulltext.jsonl"
 
     diff_fn = os.path.join(args.dump_dir, diff_fn)
-    fulltext_fn = os.path.join(args.dump_dir, metadata_fn)
-    metadata_fn = os.path.join(args.dump_dir, fulltext_fn)
+    fulltext_fn = os.path.join(args.dump_dir, fulltext_fn)
+    metadata_fn = os.path.join(args.dump_dir, metadata_fn)
 
     ## dump sample metadata
     with jsonlines.open(metadata_fn, "w") as writer:
         writer.write_all(samples)
 
+    args.num_workers = min(args.num_workers, len(sampled_files))
+
     ## launch pool
     pool = multiprocessing.Pool(args.num_workers)
 
     gen_helper_fn = functools.partial(
-        load_and_process_chunks,
+        faster_load_and_process_chunks,
         diff_fn=diff_fn,
         fulltext_fn=fulltext_fn,
         source_dir=args.source_dir,
         seq=args.seq,
+        samples=samples,
     )
 
-    num_samples_per_worker = len(samples) // args.num_workers + 1
+    num_files_per_worker = len(sampled_files) // args.num_workers + 1
 
     gen_args = []
     start_i = 0
     for j, proc in enumerate(range(args.num_workers - 1)):
-        gen_args += [[j, samples[start_i : start_i + num_samples_per_worker]]]
-        start_i += num_samples_per_worker
-    if len(samples) - start_i > 0:
-        gen_args += [[args.num_workers - 1, samples[start_i:]]]
+        gen_args += [[j, sampled_files[start_i : start_i + num_files_per_worker]]]
+        start_i += num_files_per_worker
+    if len(sampled_files) - start_i > 0:
+        gen_args += [[args.num_workers - 1, sampled_files[start_i:]]]
 
     pool = multiprocessing.Pool(args.num_workers)
     runs = [
