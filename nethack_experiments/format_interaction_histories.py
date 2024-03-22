@@ -204,7 +204,7 @@ def main(args):
     fulltext_fn = prefix + f"-n{len(samples)}-k{args.seq}-fulltext.jsonl"
 
     diff_fn = os.path.join(args.dump_dir, diff_fn)
-    fulltext_fn = os.path.join(args.dump_dir, fulltext_fn)
+    fulltext_fn = os.path.join(args.dump_dir, metadata_fn)
     metadata_fn = os.path.join(args.dump_dir, fulltext_fn)
 
     ## dump sample metadata
@@ -258,10 +258,6 @@ def parse_args():
     parser.add_argument("--seq", default=128, type=int)
 
     args = parser.parse_args()
-
-    # assign at most one worker process per core,
-    # leave at least one core free
-    args.num_workers = min(multiprocessing.cpu_count() - 1, args.num_workers)
 
     print("ARGS:", args)
 
