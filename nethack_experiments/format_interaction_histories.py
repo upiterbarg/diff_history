@@ -241,10 +241,15 @@ def parse_args():
     parser = ArgumentParser()
     parser.add_argument(
         "--source_dir",
-        default=default=os.path.join(PROJECT_PATH, "nethack_experiments", "data", "all-15000")
+        default=os.path.join(PROJECT_PATH, "nethack_experiments", "data", "all-15000"),
         type=str,
     )
-    parser.add_argument("--nsamples", default=1000, type=int)
+    parser.add_argument(
+        "--dump_dir",
+        type=str,
+        default=os.path.join(PROJECT_PATH, "nethack_experiments", "data", "processed").
+    )
+    parser.add_argument("--nsamples", default=500000, type=int)
     parser.add_argument("--num_workers", default=16, type=int)
     parser.add_argument("--seq", default=128, type=int)
 
