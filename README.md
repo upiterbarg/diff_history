@@ -1,7 +1,7 @@
 
 # `diff` History for Neural Language Agents
 
-This is the official code release accompanying the paper [***`diff` History for Neural Language Agents***](https://upiterbarg.github.io/projects) by **Piterbarg**, **Pinto**, and **Fergus** (arXiv preprint, 2024).
+This is the official code release accompanying the paper [***`diff` History for Neural Language Agents***](https://upiterbarg.github.io/projects) by **Piterbarg**, **Pinto**, and **Fergus** (ICML, 2024).
 
 --- 
 **Tldr**:  `diff` history is a method for improving the quality of LM generations for decision-making settings through low-resource instruction tuning. We show that small LMs can be data efficiently tuned into highly competitive neural agents just by: (1) treating the LM as a policy; (2) extending model context lengths; (3) increasing the length of the history used to train/tune and prompt models; and (4) preprocessing observations in history with the Unix `diff` command.
@@ -9,7 +9,7 @@ This is the official code release accompanying the paper [***`diff` History for 
 [:paperclips: **Project Page** :paperclips:](https://diffhistory.github.io) | 
 [:bulb:  **Abstract** :bulb:](https://arxiv.org/abs/2312.07540 ) | 
 [:memo: **Paper PDF** :pencil:](https://arxiv.org/pdf/2312.07540.pdf ) | 
-[:inbox_tray: **Dataset Coming Soon!** :inbox_tray:]()
+[:inbox_tray: **Dataset** :inbox_tray:](https://huggingface.co/datasets/upiter/LangHack)
 
 
 ---
